@@ -1,0 +1,32 @@
+{
+  "name": "lunch-money-mcp",
+  "version": "0.1.0",
+  "description": "MCP (HTTP) server for the Lunch Money API",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test:client": "tsx scripts/test-client.ts"
+  },
+  "keywords": [
+    "mcp",
+    "lunch-money",
+    "finance",
+    "api"
+  ],
+  "author": "Gilbert Pellegrom <gilbert@pellegrom.me>",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "fastmcp": "^3.23.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
