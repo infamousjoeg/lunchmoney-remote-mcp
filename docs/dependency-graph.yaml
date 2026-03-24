@@ -1,0 +1,100 @@
+tasks:
+  - id: "001"
+    title: "Deploy MCP server on VPS with Cloudflare Tunnel"
+    description: >
+      End-to-end tracer bullet: SSH into Hetzner VPS, install Node.js LTS,
+      create lunchmoney service user, clone the fork, build, create environment
+      file with tokens, set up systemd units for both the MCP server and
+      cloudflared, create a Cloudflare Tunnel routing lunchmoney-mcp.joe-garcia.com
+      to localhost:8080. Verify the health endpoint is reachable via the public
+      URL and services auto-restart on crash.
+    blocked_by: []
+    size: "L"
+    labels: ["ready", "tracer-bullet"]
+    acceptance_criteria:
+      - "Node.js LTS (22.x) installed on VPS via NodeSource"
+      - "Dedicated `lunchmoney` user exists on VPS (non-root, no login shell)"
+      - "Fork cloned to /opt/lunchmoney-mcp, built with npm install && npm run build"
+      - "Tokens stored in /etc/lunchmoney-mcp/env with mode 0600 owned by root:root"
+      - "systemd unit lunchmoney-mcp.service runs as lunchmoney user with EnvironmentFile"
+      - "systemctl show lunchmoney-mcp does not display token values"
+      - "Killing the Node.js process results in automatic restart within 5 seconds"
+      - "cloudflared installed and tunnel created routing lunchmoney-mcp.joe-garcia.com to localhost:8080"
+      - "systemd unit for cloudflared enabled and starts on boot"
+      - "curl https://lunchmoney-mcp.joe-garcia.com/health returns 200"
+      - "Both services survive a VPS reboot"
+
+  - id: "002"
+    title: "Configure Cloudflare Access with Service Tokens"
+    description: >
+      Set up Cloudflare Access Application protecting lunchmoney-mcp.joe-garcia.com
+      with a Service Auth policy. Create two Service Tokens (one for Joe, one for
+      wife) for OAuth client_credentials auth. Verify unauthenticated requests are
+      rejected at the edge and authenticated requests pass through to the MCP server.
+    blocked_by: ["001"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "Cloudflare Access Application exists for lunchmoney-mcp.joe-garcia.com"
+      - "Access policy requires valid Service Token (Service Auth)"
+      - "Two Service Tokens created: one for Joe, one for wife"
+      - "Requests without Service Token credentials receive 403 from Cloudflare (never reach VPS)"
+      - "Requests with valid Service Token + valid SERVER_API_KEY Bearer token reach the MCP server"
+      - "/health endpoint is excluded from Access policy (remains unauthenticated)"
+
+  - id: "003"
+    title: "Configure WAF rate limiting on /health"
+    description: >
+      Create a Cloudflare WAF rate limiting rule scoped to the /health path on
+      lunchmoney-mcp.joe-garcia.com. Limit to 10 requests per minute per IP
+      with a block action.
+    blocked_by: ["001"]
+    size: "S"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "Cloudflare WAF rate limiting rule exists for /health path"
+      - "Rate limit is 10 requests/minute/IP with block action"
+      - "Normal monitoring traffic (1 req/min) is not affected"
+
+  - id: "004"
+    title: "Configure Claude.ai MCP integrations for both users"
+    description: >
+      Set up the MCP server integration in Claude.ai Settings > Integrations for
+      both Joe and wife. Configure with the Cloudflare Access Service Token
+      credentials (client_credentials) and SERVER_API_KEY. Verify both users can
+      query Lunch Money data from Claude.ai.
+    blocked_by: ["002"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "Joe's Claude.ai account has MCP integration pointing to https://lunchmoney-mcp.joe-garcia.com/mcp"
+      - "Wife's Claude.ai account has MCP integration pointing to https://lunchmoney-mcp.joe-garcia.com/mcp"
+      - "Both use their respective Cloudflare Access Service Token credentials"
+      - "Asking 'What did I spend on groceries this month?' in Claude.ai returns Lunch Money data"
+      - "Works from web and mobile"
+
+  - id: "005"
+    title: "Migrate Claude Desktop to remote server"
+    description: >
+      Update Claude Desktop MCP configuration to point to the remote HTTP server
+      instead of the local stdio/npx server. Remove the old local MCP entry.
+    blocked_by: ["002"]
+    size: "S"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "Claude Desktop MCP config points to https://lunchmoney-mcp.joe-garcia.com/mcp"
+      - "Local npx MCP server entry is removed from Claude Desktop config"
+      - "Claude Desktop can query Lunch Money data via the remote server"
+
+  - id: "006"
+    title: "Verify upstream sync workflow on VPS"
+    description: >
+      Configure the upstream remote on the VPS clone and verify the merge +
+      rebuild + restart workflow works cleanly.
+    blocked_by: ["001"]
+    size: "S"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "git remote upstream points to gilbitron/lunch-money-mcp on VPS clone"
+      - "git fetch upstream && git merge upstream/main completes without conflict"
+      - "npm install && npm run build && sudo systemctl restart lunchmoney-mcp completes the update"
