@@ -1,0 +1,11 @@
+# Copy to /root/.cloudflared/config.yml on VPS
+# Replace tunnel ID and credentials-file with your actual values
+tunnel: <TUNNEL_ID>
+credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: lunchmoney-mcp.joe-garcia.com
+    service: http://localhost:8090
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404
