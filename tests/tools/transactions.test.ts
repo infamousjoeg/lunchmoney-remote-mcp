@@ -63,8 +63,8 @@ describe("Transaction tools", () => {
     tools = mockServer.tools;
   });
 
-  it("registers six tools", () => {
-    expect(tools).toHaveLength(6);
+  it("registers ten tools", () => {
+    expect(tools).toHaveLength(10);
     expect(tools.map((t) => t.name)).toEqual([
       "getTransactions",
       "getTransaction",
@@ -72,6 +72,10 @@ describe("Transaction tools", () => {
       "updateTransaction",
       "deleteTransaction",
       "bulkUpdateTransactions",
+      "getTransactionGroup",
+      "createTransactionGroup",
+      "deleteTransactionGroup",
+      "unsplitTransactions",
     ]);
   });
 
@@ -255,6 +259,227 @@ describe("Transaction tools", () => {
       expect(result).toBe(
         "Lunch Money API Error: Server error (Status: 500)"
       );
+    });
+  });
+
+  // ---------- getTransactionGroup ----------
+  describe("getTransactionGroup", () => {
+    it("returns JSON stringified transaction group on success", async () => {
+      const groupTransaction: Transaction = {
+        ...sampleTransaction,
+        is_group: true,
+        subtransactions: [
+          { ...sampleTransaction, id: 2, group_id: 1 },
+          { ...sampleTransaction, id: 3, group_id: 1 },
+        ],
+      };
+      mockClient.get.mockResolvedValue(groupTransaction);
+
+      const tool = tools.find((t) => t.name === "getTransactionGroup")!;
+      const result = await tool.execute({ id: 1 });
+
+      expect(mockClient.get).toHaveBeenCalledWith("/transactions/group/1");
+      expect(result).toBe(JSON.stringify(groupTransaction, null, 2));
+    });
+
+    it("returns formatted error on LunchMoneyAPIError", async () => {
+      mockClient.get.mockRejectedValue(
+        new LunchMoneyAPIError("Group not found", 404)
+      );
+
+      const tool = tools.find((t) => t.name === "getTransactionGroup")!;
+      const result = await tool.execute({ id: 99999 });
+
+      expect(result).toBe(
+        "Lunch Money API Error: Group not found (Status: 404)"
+      );
+    });
+
+    it("returns formatted error on generic Error", async () => {
+      mockClient.get.mockRejectedValue(new Error("Network failure"));
+
+      const tool = tools.find((t) => t.name === "getTransactionGroup")!;
+      const result = await tool.execute({ id: 1 });
+
+      expect(result).toBe("Error: Network failure");
+    });
+
+    it("returns unknown error message for non-Error throws", async () => {
+      mockClient.get.mockRejectedValue("something unexpected");
+
+      const tool = tools.find((t) => t.name === "getTransactionGroup")!;
+      const result = await tool.execute({ id: 1 });
+
+      expect(result).toBe("An unknown error occurred");
+    });
+  });
+
+  // ---------- createTransactionGroup ----------
+  describe("createTransactionGroup", () => {
+    it("returns JSON stringified group transaction on success", async () => {
+      const groupTransaction: Transaction = {
+        ...sampleTransaction,
+        is_group: true,
+        subtransactions: [
+          { ...sampleTransaction, id: 2, group_id: 1 },
+          { ...sampleTransaction, id: 3, group_id: 1 },
+        ],
+      };
+      mockClient.post.mockResolvedValue(groupTransaction);
+
+      const tool = tools.find((t) => t.name === "createTransactionGroup")!;
+      const args = {
+        date: "2024-06-01",
+        payee: "Grouped Transaction",
+        transactions: [2, 3],
+        category_id: 10,
+        notes: "Grouped for tracking",
+      };
+      const result = await tool.execute(args);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        "/transactions/group",
+        args
+      );
+      expect(result).toBe(JSON.stringify(groupTransaction, null, 2));
+    });
+
+    it("returns formatted error on LunchMoneyAPIError", async () => {
+      mockClient.post.mockRejectedValue(
+        new LunchMoneyAPIError("Validation error", 422)
+      );
+
+      const tool = tools.find((t) => t.name === "createTransactionGroup")!;
+      const result = await tool.execute({
+        date: "2024-06-01",
+        payee: "Bad Group",
+        transactions: [2, 3],
+      });
+
+      expect(result).toBe(
+        "Lunch Money API Error: Validation error (Status: 422)"
+      );
+    });
+
+    it("returns formatted error on generic Error", async () => {
+      mockClient.post.mockRejectedValue(new Error("Connection timeout"));
+
+      const tool = tools.find((t) => t.name === "createTransactionGroup")!;
+      const result = await tool.execute({
+        date: "2024-06-01",
+        payee: "Group",
+        transactions: [2, 3],
+      });
+
+      expect(result).toBe("Error: Connection timeout");
+    });
+
+    it("returns unknown error message for non-Error throws", async () => {
+      mockClient.post.mockRejectedValue(42);
+
+      const tool = tools.find((t) => t.name === "createTransactionGroup")!;
+      const result = await tool.execute({
+        date: "2024-06-01",
+        payee: "Group",
+        transactions: [2, 3],
+      });
+
+      expect(result).toBe("An unknown error occurred");
+    });
+  });
+
+  // ---------- deleteTransactionGroup ----------
+  describe("deleteTransactionGroup", () => {
+    it("returns success message on delete", async () => {
+      mockClient.delete.mockResolvedValue(undefined);
+
+      const tool = tools.find((t) => t.name === "deleteTransactionGroup")!;
+      const result = await tool.execute({ id: 1 });
+
+      expect(mockClient.delete).toHaveBeenCalledWith(
+        "/transactions/group/1"
+      );
+      expect(result).toBe("Transaction group 1 deleted successfully");
+    });
+
+    it("returns formatted error on LunchMoneyAPIError", async () => {
+      mockClient.delete.mockRejectedValue(
+        new LunchMoneyAPIError("Group not found", 404)
+      );
+
+      const tool = tools.find((t) => t.name === "deleteTransactionGroup")!;
+      const result = await tool.execute({ id: 99999 });
+
+      expect(result).toBe(
+        "Lunch Money API Error: Group not found (Status: 404)"
+      );
+    });
+
+    it("returns formatted error on generic Error", async () => {
+      mockClient.delete.mockRejectedValue(new Error("Network failure"));
+
+      const tool = tools.find((t) => t.name === "deleteTransactionGroup")!;
+      const result = await tool.execute({ id: 1 });
+
+      expect(result).toBe("Error: Network failure");
+    });
+
+    it("returns unknown error message for non-Error throws", async () => {
+      mockClient.delete.mockRejectedValue("something unexpected");
+
+      const tool = tools.find((t) => t.name === "deleteTransactionGroup")!;
+      const result = await tool.execute({ id: 1 });
+
+      expect(result).toBe("An unknown error occurred");
+    });
+  });
+
+  // ---------- unsplitTransactions ----------
+  describe("unsplitTransactions", () => {
+    it("returns JSON stringified response on success", async () => {
+      const mockResponse = { parent_ids: [1], transactions: [sampleTransaction] };
+      mockClient.post.mockResolvedValue(mockResponse);
+
+      const tool = tools.find((t) => t.name === "unsplitTransactions")!;
+      const args = { parent_ids: [1] };
+      const result = await tool.execute(args);
+
+      expect(mockClient.post).toHaveBeenCalledWith(
+        "/transactions/unsplit",
+        args
+      );
+      expect(result).toBe(JSON.stringify(mockResponse, null, 2));
+    });
+
+    it("returns formatted error on LunchMoneyAPIError", async () => {
+      mockClient.post.mockRejectedValue(
+        new LunchMoneyAPIError("Cannot unsplit", 400)
+      );
+
+      const tool = tools.find((t) => t.name === "unsplitTransactions")!;
+      const result = await tool.execute({ parent_ids: [99999] });
+
+      expect(result).toBe(
+        "Lunch Money API Error: Cannot unsplit (Status: 400)"
+      );
+    });
+
+    it("returns formatted error on generic Error", async () => {
+      mockClient.post.mockRejectedValue(new Error("Connection timeout"));
+
+      const tool = tools.find((t) => t.name === "unsplitTransactions")!;
+      const result = await tool.execute({ parent_ids: [1] });
+
+      expect(result).toBe("Error: Connection timeout");
+    });
+
+    it("returns unknown error message for non-Error throws", async () => {
+      mockClient.post.mockRejectedValue(42);
+
+      const tool = tools.find((t) => t.name === "unsplitTransactions")!;
+      const result = await tool.execute({ parent_ids: [1] });
+
+      expect(result).toBe("An unknown error occurred");
     });
   });
 });
