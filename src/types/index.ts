@@ -158,3 +158,24 @@ export interface BudgetsResponse {
 export interface AssetsResponse {
     assets: Asset[];
 }
+
+// Plaid account types
+export interface PlaidAccount {
+    id: number;
+    date_linked: string;
+    name: string;
+    display_name?: string;
+    type: string;
+    subtype: string;
+    mask: string;
+    institution_name: string;
+    status: string;
+    balance: string;
+    currency: string;
+    balance_last_update: string;
+    limit?: number;
+}
+
+export interface PlaidAccountsResponse {
+    plaid_accounts: PlaidAccount[];
+}
