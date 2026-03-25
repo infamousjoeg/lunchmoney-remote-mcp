@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { FastMCP } from "fastmcp";
+import { FastMCP, GoogleProvider } from "fastmcp";
 import { LunchMoneyClient } from "./api/client.js";
 import { registerUserTools } from "./tools/user.js";
 import { registerCategoryTools } from "./tools/categories.js";
@@ -13,7 +13,10 @@ import { registerAssetTools } from "./tools/assets.js";
 const apiToken = process.env.LUNCH_MONEY_API_TOKEN;
 const host = process.env.HOST || "0.0.0.0";
 const port = parseInt(process.env.PORT || "8080", 10);
-const serverApiKey = process.env.SERVER_API_KEY;
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const baseUrl = process.env.BASE_URL || `http://${host}:${port}`;
+const jwtSigningKey = process.env.JWT_SIGNING_KEY;
 
 if (!apiToken) {
     console.error(
@@ -25,11 +28,18 @@ if (!apiToken) {
     process.exit(1);
 }
 
+if (!googleClientId || !googleClientSecret) {
+    console.error(
+        "Error: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables are required"
+    );
+    process.exit(1);
+}
+
 // Initialize API client
 const client = new LunchMoneyClient(apiToken);
 
-// Create FastMCP server instance with authentication
-const serverOptions: ConstructorParameters<typeof FastMCP>[0] = {
+// Create FastMCP server instance with Google OAuth
+const mcpServer = new FastMCP({
     name: "Lunch Money MCP",
     version: "1.0.0",
     instructions:
@@ -39,61 +49,15 @@ const serverOptions: ConstructorParameters<typeof FastMCP>[0] = {
     health: {
         enabled: true,
     },
-};
-
-// Add authentication if SERVER_API_KEY is set
-if (serverApiKey) {
-    serverOptions.authenticate = async (request) => {
-        // Allow /ready endpoint without authentication (FastMCP's built-in health check)
-        const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
-        if (url.pathname === "/ready" && request.method === "GET") {
-            return { authenticated: false };
-        }
-
-        // FastMCP's request.headers can be a Headers object or a plain object
-        const authHeader = request.headers instanceof Headers
-            ? request.headers.get("authorization")
-            : (request.headers["authorization"] || request.headers["Authorization"]);
-
-        if (!authHeader) {
-            throw new Response(
-                JSON.stringify({ error: "Unauthorized: Missing Authorization header" }),
-                {
-                    status: 401,
-                    statusText: "Unauthorized",
-                    headers: { "Content-Type": "application/json" },
-                }
-            );
-        }
-
-        // Handle both string and string[] types
-        const authValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
-
-        // Support both "Bearer <key>" and direct key formats
-        const providedKey = authValue.startsWith("Bearer ")
-            ? authValue.substring(7)
-            : authValue;
-
-        if (providedKey !== serverApiKey) {
-            throw new Response(
-                JSON.stringify({ error: "Unauthorized: Invalid API key" }),
-                {
-                    status: 401,
-                    statusText: "Unauthorized",
-                    headers: { "Content-Type": "application/json" },
-                }
-            );
-        }
-
-        // Return authentication context (accessible via context.session)
-        return {
-            authenticated: true,
-            apiKey: providedKey,
-        };
-    };
-}
-
-const mcpServer = new FastMCP(serverOptions);
+    auth: new GoogleProvider({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+        baseUrl,
+        scopes: ["openid", "email"],
+        consentRequired: false,
+        ...(jwtSigningKey ? { jwtSigningKey } : {}),
+    }),
+});
 
 // Register all tool modules
 registerUserTools(mcpServer, client);
@@ -117,8 +81,5 @@ mcpServer.start({
 console.log(`Lunch Money MCP Server started on port ${port}`);
 console.log(`Server ready to accept connections at http://${host}:${port}/mcp`);
 console.log(`Health check available at http://${host}:${port}/health`);
-if (serverApiKey) {
-    console.log("API key authentication enabled");
-} else {
-    console.log("Warning: API key authentication is disabled (SERVER_API_KEY not set)");
-}
+console.log(`Google OAuth enabled (base URL: ${baseUrl})`);
+console.log(`OAuth callback: ${baseUrl}/oauth/callback`);

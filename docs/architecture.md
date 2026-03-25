@@ -51,10 +51,52 @@ graph LR
 
 ## Auth Flow
 
-1. User configures MCP integration in Claude.ai with `client_id` + `client_secret` (Cloudflare Access Service Token)
-2. Claude.ai sends OAuth `client_credentials` grant to Cloudflare Access token endpoint
-3. Cloudflare Access validates and passes request through the tunnel
-4. `cloudflared` forwards to `localhost:8080`
-5. FastMCP validates `Authorization: Bearer <SERVER_API_KEY>`
+1. User configures MCP integration in Claude.ai with server URL
+2. Claude.ai initiates OAuth 2.1 flow via FastMCP's GoogleProvider
+3. User authenticates with Google (joe@joe-garcia.com or charissa.s.garcia@gmail.com)
+4. FastMCP issues JWT, Claude.ai uses it for subsequent requests
+5. Request passes through Cloudflare Tunnel → cloudflared → localhost:8090
 6. MCP server processes the request, calling Lunch Money API as needed
 7. Response flows back through the tunnel to Claude.ai
+
+## MCP Tool Modules
+
+```mermaid
+graph TD
+    subgraph "MCP Server (FastMCP)"
+        IDX[index.ts<br/>Server setup + OAuth]
+        IDX --> USER[user.ts<br/>getUser]
+        IDX --> CAT[categories.ts<br/>getCategories, createCategory,<br/>updateCategory, deleteCategory,<br/>getCategory, createCategoryGroup,<br/>addToGroup]
+        IDX --> TAG[tags.ts<br/>getTags, createTag,<br/>updateTag, deleteTag]
+        IDX --> TXN[transactions.ts<br/>getTransactions, getTransaction,<br/>createTransaction, updateTransaction,<br/>deleteTransaction, bulkUpdate,<br/>createGroup, getGroup,<br/>deleteGroup, unsplit]
+        IDX --> REC[recurring.ts<br/>getRecurringItems, create,<br/>update, delete]
+        IDX --> BUD[budgets.ts<br/>getBudgets, createBudget,<br/>updateBudget, deleteBudget]
+        IDX --> AST[assets.ts<br/>getAssets, createAsset,<br/>updateAsset, deleteAsset]
+        IDX --> PLAID[plaid.ts ★ NEW<br/>getPlaidAccounts,<br/>fetchPlaidAccounts]
+    end
+
+    subgraph "Shared Modules"
+        CLIENT[api/client.ts<br/>LunchMoneyClient<br/>get, post, put, delete]
+        TYPES[types/index.ts<br/>Interfaces]
+        SCHEMAS[schemas/index.ts<br/>Zod schemas]
+        ERRORS[utils/errors.ts<br/>formatErrorForMCP]
+    end
+
+    subgraph "Test Suite ★ NEW"
+        T_USER[tests/tools/user.test.ts]
+        T_CAT[tests/tools/categories.test.ts]
+        T_TAG[tests/tools/tags.test.ts]
+        T_TXN[tests/tools/transactions.test.ts]
+        T_REC[tests/tools/recurring.test.ts]
+        T_BUD[tests/tools/budgets.test.ts]
+        T_AST[tests/tools/assets.test.ts]
+        T_PLAID[tests/tools/plaid.test.ts]
+        T_CLIENT[tests/api/client.test.ts]
+    end
+
+    USER & CAT & TAG & TXN & REC & BUD & AST & PLAID --> CLIENT
+    USER & CAT & TAG & TXN & REC & BUD & AST & PLAID --> ERRORS
+    CLIENT --> |HTTPS| LM[Lunch Money API<br/>dev.lunchmoney.app/v1]
+```
+
+★ = new in this PRD

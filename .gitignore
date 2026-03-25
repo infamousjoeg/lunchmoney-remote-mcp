@@ -6,3 +6,4 @@ dist/
 *.tsbuildinfo
 fly.toml
 pnpm-lock.yaml
+credentials.md

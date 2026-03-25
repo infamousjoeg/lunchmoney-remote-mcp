@@ -75,3 +75,43 @@ SERVER_API_KEY=<mcp_bearer_token>
 **Decision:** This repo serves as both the application code (forked from upstream) and the infrastructure/deployment config. No separate infra repo.
 
 **Rationale:** Small project with a single deployment target. Splitting code and infra across two repos adds overhead with no benefit.
+
+---
+
+Resolved during `/grill` session on 2026-03-25. Topic: closing API coverage gaps.
+
+## 10. API Coverage Gaps: Scope
+
+**Decision:** Implement 10 new MCP tools covering 3 gap categories. Skip cryptocurrency endpoints.
+
+**Endpoints to implement:**
+- **Plaid Accounts (2):** `GET /plaid_accounts` (list accounts with balances), `POST /plaid_accounts/fetch` (trigger Plaid sync)
+- **Transaction Grouping (5):** `GET /transactions/{id}` (single lookup), `POST /transactions/unsplit`, `GET /transactions/group`, `POST /transactions/group`, `DELETE /transactions/group/{id}`
+- **Category Groups (3):** `GET /categories/{id}` (single lookup), `POST /categories/group` (create group), `POST /categories/group/{id}/add` (add to group)
+
+**Rejected:** Cryptocurrency endpoints (`GET /crypto`, `PUT /crypto/manual/{id}`) — not used.
+
+**Rationale:** Plaid account balances are essential (can't answer "what's my balance?" without them). Transaction grouping enables splitting/managing transactions through chat. Category group management supports evolving the needs/wants/savings structure over time.
+
+## 11. Code Style: Match Upstream Patterns
+
+**Decision:** All new tools must follow the exact same patterns as existing upstream tools — same error handling, same Zod schemas, same registration function style.
+
+**Rationale:** These tools will be contributed upstream as a PR. Matching the existing style maximizes the chance of acceptance and keeps the codebase consistent. Style improvements, if any, should be a separate PR.
+
+## 12. Testing: Vitest with Full Coverage
+
+**Decision:** Add Vitest as the test framework. Write tests for all 37 tools (27 existing + 10 new), not just the new ones.
+
+**Rationale:** Upstream has no automated test suite — only a manual `test:client` script. A comprehensive test suite makes the upstream PR more valuable and gives confidence when merging upstream changes. Vitest chosen for native ESM support (project uses `"type": "module"`), zero-config TypeScript, built-in mocking, and coverage reporting.
+
+**Test approach:**
+- Unit tests for each tool with mocked API responses
+- Integration-style tests for the API client methods
+- Full coverage reporting
+
+## 13. Upstream Contribution
+
+**Decision:** Contribute the new tools and test suite back to `gilbitron/lunch-money-mcp` as a PR, separate from our OAuth/deployment changes.
+
+**Rationale:** Standard API endpoint coverage benefits all users. Keeping our fork's delta small reduces merge conflicts long-term. The PR must meet production quality: rigorous tests, full coverage, and code that matches upstream conventions exactly.
