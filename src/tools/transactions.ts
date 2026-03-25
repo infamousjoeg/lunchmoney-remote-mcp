@@ -34,6 +34,22 @@ export function registerTransactionTools(
   });
 
   server.addTool({
+    name: "getTransaction",
+    description: "Get a single transaction by ID",
+    parameters: idSchema,
+    execute: async (args: z.infer<typeof idSchema>) => {
+      try {
+        const response = await client.get<Transaction>(
+          `/transactions/${args.id}`
+        );
+        return JSON.stringify(response, null, 2);
+      } catch (error) {
+        return formatErrorForMCP(error);
+      }
+    },
+  });
+
+  server.addTool({
     name: "createTransaction",
     description: "Create a new transaction (expense, income, or transfer)",
     parameters: createTransactionSchema,
