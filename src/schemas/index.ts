@@ -151,6 +151,17 @@ export const updateAssetSchema = z.object({
   institution_name: z.string().optional(),
 });
 
+// Category group schemas
+export const createCategoryGroupSchema = z.object({
+  name: z.string().min(1),
+  category_ids: z.array(z.number()).optional(),
+});
+
+export const addToGroupSchema = z.object({
+  group_id: z.number().int().positive(),
+  category_ids: z.array(z.number()).min(1),
+});
+
 // ID parameter schemas
 export const idSchema = z.object({
   id: z.number().int().positive(),
