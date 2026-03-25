@@ -1,0 +1,108 @@
+tasks:
+  - id: "007"
+    title: "Vitest setup + Plaid accounts tools with tests"
+    description: >
+      Tracer bullet: Set up Vitest infrastructure (config, scripts, coverage),
+      then implement the Plaid accounts module (getPlaidAccounts, fetchPlaidAccounts)
+      with types, schemas, registration, and full tests. Proves the test framework
+      works end-to-end with a new tool module.
+    blocked_by: []
+    size: "L"
+    labels: ["ready", "tracer-bullet"]
+    acceptance_criteria:
+      - "Vitest installed and configured for ESM TypeScript"
+      - "npm test runs all tests and reports coverage"
+      - "vitest.config.ts exists with coverage settings"
+      - "PlaidAccount and PlaidAccountsResponse types added to types/index.ts"
+      - "getPlaidAccounts tool returns all Plaid-connected accounts with balances"
+      - "fetchPlaidAccounts tool triggers a Plaid sync"
+      - "Plaid tools registered in src/index.ts"
+      - "tests/tools/plaid.test.ts covers success and error cases"
+      - "Tests mock LunchMoneyClient, not HTTP"
+
+  - id: "008"
+    title: "Single transaction lookup + existing transaction tests"
+    description: >
+      Add getTransaction tool to the transactions module for looking up a single
+      transaction by ID. Write tests for getTransaction plus all 5 existing
+      transaction tools (getTransactions, createTransaction, updateTransaction,
+      deleteTransaction, bulkUpdateTransactions).
+    blocked_by: ["007"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "getTransaction tool returns a single transaction by ID"
+      - "Returns clear error if transaction ID doesn't exist"
+      - "tests/tools/transactions.test.ts covers all 6 transaction tools"
+      - "Each tool tested for success and error cases"
+      - ">90% line coverage for transactions module"
+
+  - id: "009"
+    title: "Transaction grouping and unsplit tools with tests"
+    description: >
+      Add createTransactionGroup, getTransactionGroup, deleteTransactionGroup,
+      and unsplitTransactions tools to the transactions module. Write tests
+      for all 4 new tools.
+    blocked_by: ["008"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "createTransactionGroup groups multiple transaction IDs under a parent"
+      - "getTransactionGroup retrieves a group with all child transactions"
+      - "deleteTransactionGroup ungroups transactions, restoring individuals"
+      - "unsplitTransactions reverses a split, merging children into parent"
+      - "New Zod schemas: createTransactionGroupSchema, unsplitTransactionsSchema"
+      - "Tests cover success and error cases for all 4 tools"
+      - ">90% line coverage for transactions module"
+
+  - id: "010"
+    title: "Category group tools + existing category tests"
+    description: >
+      Add getCategory, createCategoryGroup, and addToGroup tools to the
+      categories module. Write tests for all 3 new tools plus the 4 existing
+      category tools.
+    blocked_by: ["007"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "getCategory tool returns a single category by ID"
+      - "createCategoryGroup creates a new category group with name and category_ids"
+      - "addToGroup adds existing categories to a group"
+      - "New Zod schemas: createCategoryGroupSchema, addToGroupSchema"
+      - "tests/tools/categories.test.ts covers all 7 category tools"
+      - ">90% line coverage for categories module"
+
+  - id: "011"
+    title: "Backfill tests for user, tags, recurring, budgets, assets, and API client"
+    description: >
+      Write tests for all remaining existing tools and the API client.
+      Completes the full test suite for upstream contribution.
+    blocked_by: ["007"]
+    size: "L"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "tests/tools/user.test.ts covers getUser"
+      - "tests/tools/tags.test.ts covers all 4 tag tools"
+      - "tests/tools/recurring.test.ts covers all 4 recurring tools"
+      - "tests/tools/budgets.test.ts covers all 4 budget tools"
+      - "tests/tools/assets.test.ts covers all 4 asset tools"
+      - "tests/api/client.test.ts covers get, post, put, delete methods"
+      - "Each tool tested for success and error cases"
+      - "Overall coverage >90% for src/tools/, src/api/, src/utils/"
+
+  - id: "012"
+    title: "Prepare and submit upstream PR"
+    description: >
+      Cherry-pick only the new tools, types, schemas, and test suite onto a
+      clean branch from upstream/main. Exclude all OAuth, deployment, and
+      fork-specific changes. Submit PR to gilbitron/lunch-money-mcp.
+    blocked_by: ["008", "009", "010", "011"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "Branch created from upstream/main with only tool + test changes"
+      - "No OAuth, deployment, or fork-specific files in the diff"
+      - "npm test passes with >90% coverage"
+      - "npm run build compiles without errors"
+      - "PR submitted to gilbitron/lunch-money-mcp with clear description"
+      - "PR body lists all 10 new tools and links to Lunch Money API docs"
