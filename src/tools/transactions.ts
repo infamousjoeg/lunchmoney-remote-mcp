@@ -125,7 +125,8 @@ export function registerTransactionTools(
     execute: async (args: z.infer<typeof idSchema>) => {
       try {
         const response = await client.get<Transaction>(
-          `/transactions/group/${args.id}`
+          "/transactions/group",
+          { transaction_id: args.id }
         );
         return JSON.stringify(response, null, 2);
       } catch (error) {

@@ -174,6 +174,14 @@ export interface PlaidAccount {
     currency: string;
     balance_last_update: string;
     limit?: number;
+    plaid_item_id?: number;
+    linked_by_name?: string;
+    allow_transaction_modifications?: boolean;
+    to_base?: number;
+    import_start_date?: string;
+    last_import?: string;
+    last_fetch?: string;
+    plaid_last_successful_update?: string;
 }
 
 export interface PlaidAccountsResponse {

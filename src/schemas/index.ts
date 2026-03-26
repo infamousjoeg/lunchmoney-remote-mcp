@@ -163,17 +163,24 @@ export const createTransactionGroupSchema = z.object({
 
 export const unsplitTransactionsSchema = z.object({
   parent_ids: z.array(z.number()).min(1),
+  remove_parents: z.boolean().optional(),
 });
 
 // Category group schemas
 export const createCategoryGroupSchema = z.object({
   name: z.string().min(1),
+  description: z.string().optional(),
+  is_income: z.boolean().optional(),
+  exclude_from_budget: z.boolean().optional(),
+  exclude_from_totals: z.boolean().optional(),
   category_ids: z.array(z.number()).optional(),
+  new_categories: z.array(z.string()).optional(),
 });
 
 export const addToGroupSchema = z.object({
   group_id: z.number().int().positive(),
-  category_ids: z.array(z.number()).min(1),
+  category_ids: z.array(z.number()).optional(),
+  new_categories: z.array(z.string()).optional(),
 });
 
 // ID parameter schemas
