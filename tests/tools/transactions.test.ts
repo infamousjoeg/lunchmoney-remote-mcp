@@ -278,7 +278,7 @@ describe("Transaction tools", () => {
       const tool = tools.find((t) => t.name === "getTransactionGroup")!;
       const result = await tool.execute({ id: 1 });
 
-      expect(mockClient.get).toHaveBeenCalledWith("/transactions/group/1");
+      expect(mockClient.get).toHaveBeenCalledWith("/transactions/group", { transaction_id: 1 });
       expect(result).toBe(JSON.stringify(groupTransaction, null, 2));
     });
 
