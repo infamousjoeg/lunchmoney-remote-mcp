@@ -1,0 +1,143 @@
+tasks:
+  - id: "013"
+    title: "New repo + CLI + credential store + stdio + setup tool"
+    description: >
+      Tracer bullet for the standalone project. Create the new GitHub repo
+      (infamousjoeg/lunchmoney-mcp), scaffold package.json for npm publishing,
+      implement the credential store (OS keychain + ENV fallback), CLI module
+      (--http, setup, --version), server factory (stdio only), setup wizard
+      (interactive prompt), and configureLunchMoneyToken MCP tool. Port the
+      API client, types, schemas, and error utils. Register getUser +
+      configureLunchMoneyToken as proof of concept. Tests for all new modules.
+    blocked_by: []
+    size: "XL"
+    labels: ["ready", "tracer-bullet"]
+    acceptance_criteria:
+      - "GitHub repo infamousjoeg/lunchmoney-mcp exists"
+      - "package.json has bin field pointing to dist/cli.js"
+      - "npx lunchmoney-mcp starts server in stdio mode"
+      - "npx lunchmoney-mcp setup prompts for API token and stores in OS keychain"
+      - "configureLunchMoneyToken MCP tool accepts token, validates via GET /me, stores in keychain"
+      - "Credential store reads from keychain first, falls back to LUNCH_MONEY_API_TOKEN ENV var"
+      - "First run without token returns helpful setup message from all tools"
+      - "getUser tool works after token is configured"
+      - "Tests cover credential store, CLI, setup wizard, configureLunchMoneyToken tool"
+      - "npm run build compiles cleanly"
+      - "npm test passes"
+
+  - id: "014"
+    title: "Port all 37 tools and 157 tests"
+    description: >
+      Bring over all 8 tool modules and 9 test files from the fork. Register
+      all tools in the server factory. Verify all 157 tests pass in the new
+      project with >90% coverage.
+    blocked_by: ["013"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "All 8 tool modules ported: user, categories, tags, transactions, recurring, budgets, assets, plaid"
+      - "All 37 tools registered and functional in stdio mode"
+      - "All 9 test files ported and passing (157 tests)"
+      - "Coverage >90% on all tool modules"
+      - "No changes to tool code — identical to fork"
+
+  - id: "015"
+    title: "HTTP transport + Google and GitHub OAuth"
+    description: >
+      Add HTTP stream transport to the server factory, triggered by --http
+      CLI flag. Implement auth provider factory supporting Google and GitHub
+      via FastMCP's built-in providers. OAuth client credentials read from
+      credential store (keychain) or ENV vars.
+    blocked_by: ["013"]
+    size: "L"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "npx lunchmoney-mcp --http starts server in HTTP stream mode on configurable port"
+      - "HTTP mode requires OAuth — unauthenticated requests rejected"
+      - "AUTH_PROVIDER=google with GOOGLE_CLIENT_ID/SECRET works"
+      - "AUTH_PROVIDER=github with GITHUB_CLIENT_ID/SECRET works"
+      - "OAuth client credentials can be stored in keychain via setup wizard"
+      - "/.well-known/oauth-authorization-server returns discovery metadata"
+      - "/health endpoint works without auth"
+      - "Tests cover auth provider factory, HTTP transport selection"
+
+  - id: "016"
+    title: "Encrypted session store with keychain-guarded key"
+    description: >
+      Implement FastMCP EncryptedTokenStorage wrapping DiskStore for OAuth
+      session persistence. Encryption key stored in OS keychain. Data dir
+      resolved via env-paths package. Sessions survive server restarts.
+    blocked_by: ["015"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "OAuth sessions persist across server restarts"
+      - "Session tokens encrypted at rest with AES-256-GCM"
+      - "Encryption key stored in OS keychain, not on filesystem"
+      - "Data directory uses platform-native path (~/Library/Application Support/ on macOS, etc.)"
+      - "TTL-managed with automatic expiration cleanup"
+      - "Tests cover encryption round-trip, keychain key retrieval, TTL expiration"
+
+  - id: "017"
+    title: "CyberArk Identity + generic OAuth provider"
+    description: >
+      Add CyberArk Identity as a named provider option and generic OAuth
+      for user-supplied endpoints. Both use FastMCP's OAuthProvider class.
+    blocked_by: ["015"]
+    size: "S"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "AUTH_PROVIDER=cyberark works with CyberArk Identity OIDC endpoints"
+      - "AUTH_PROVIDER=custom works with user-supplied OAUTH_AUTH_URL and OAUTH_TOKEN_URL"
+      - "Invalid AUTH_PROVIDER value returns clear error message"
+      - "Tests cover CyberArk provider, custom provider, invalid provider"
+
+  - id: "018"
+    title: "Deployment configs"
+    description: >
+      Create deployment artifacts for Docker, systemd, Railway, Render, and
+      Fly.io. Each config is tested or validated where possible.
+    blocked_by: ["015"]
+    size: "M"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "Dockerfile builds and runs the server in HTTP mode"
+      - "docker-compose.yml works with docker compose up"
+      - "systemd unit file included for VPS deployment"
+      - "railway.json enables Railway one-click deploy"
+      - "render.yaml enables Render deployment"
+      - "fly.toml enables Fly.io deployment"
+      - "Docker image uses ENV vars for credentials (no keychain in containers)"
+
+  - id: "019"
+    title: "README + SECURITY.md + LICENSE + npm publish"
+    description: >
+      Write comprehensive documentation and publish to npm. README covers
+      quick start, features, all auth providers, all deployment targets,
+      tools reference. SECURITY.md documents credential architecture.
+      LICENSE credits original project.
+    blocked_by: ["014", "016", "017", "018"]
+    size: "L"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "README has quick start (3 lines to working), features, setup, auth providers, deployment, tools reference"
+      - "README badges: npm version, test status, coverage, license"
+      - "SECURITY.md documents two-tier credential architecture, keychain + encrypted disk store, threat model"
+      - "LICENSE is MIT with attribution to gilbitron/lunch-money-mcp"
+      - "npm publish succeeds — package available as lunchmoney-mcp"
+      - "npx lunchmoney-mcp works from npm (not just local)"
+      - "Package size <5MB"
+
+  - id: "020"
+    title: "GitHub Actions CI + CONTRIBUTING.md"
+    description: >
+      Set up CI pipeline and contribution guidelines. CI runs tests and
+      coverage on every push and PR.
+    blocked_by: ["014"]
+    size: "S"
+    labels: ["blocked"]
+    acceptance_criteria:
+      - "GitHub Actions workflow runs npm test on push to main and on PRs"
+      - "CI reports coverage and fails if below 90%"
+      - "CONTRIBUTING.md covers dev setup, test instructions, PR guidelines"
+      - "CI badge in README reflects current status"
