@@ -115,3 +115,108 @@ Resolved during `/grill` session on 2026-03-25. Topic: closing API coverage gaps
 **Decision:** Contribute the new tools and test suite back to `gilbitron/lunch-money-mcp` as a PR, separate from our OAuth/deployment changes.
 
 **Rationale:** Standard API endpoint coverage benefits all users. Keeping our fork's delta small reduces merge conflicts long-term. The PR must meet production quality: rigorous tests, full coverage, and code that matches upstream conventions exactly.
+
+---
+
+Resolved during `/grill` session on 2026-03-26. Topic: standalone project launch.
+
+## 14. Standalone Project
+
+**Decision:** Create a new standalone repo `infamousjoeg/lunchmoney-mcp` (not a fork). Publish to npm as `lunchmoney-mcp`.
+
+**Rationale:** The upstream `gilbitron/lunch-money-mcp` has 0 stars, 1 fork (ours), and hasn't been touched in 3 months. Our project has diverged significantly (OAuth, dual transport, 10 new tools, full test suite). A standalone repo gets proper GitHub discoverability, clean npm publishing, and its own identity. The upstream PR (#3) was submitted in good faith; this project stands on its own regardless. MIT license allows commercial and derivative use with attribution.
+
+**Rejected:** Staying as a fork (second-class citizen in GitHub search, carries parent's name). SaaS monetization (TAM too small — ~5,000 Lunch Money users, realistic paying users 5-50, revenue wouldn't cover time cost, security liability of holding financial API tokens).
+
+## 15. Dual Transport
+
+**Decision:** Single entry point, transport selected by CLI flag. stdio is default, HTTP is opt-in.
+
+```bash
+npx lunchmoney-mcp          # stdio (default)
+npx lunchmoney-mcp --http   # HTTP remote
+```
+
+**Rationale:** stdio is the most common MCP use case (Claude Desktop/Code users just want `npx`). HTTP requires additional config (port, auth provider) so it's the explicit opt-in. FastMCP already supports both `transportType: "stdio"` and `transportType: "httpStream"`.
+
+## 16. Authentication Model
+
+**Decision:** Transport-specific auth with multiple provider choices for HTTP.
+
+| Transport | Auth | Details |
+|-----------|------|---------|
+| stdio | `LUNCH_MONEY_API_TOKEN` only | No network exposure, no auth layer needed |
+| HTTP | OAuth 2.1 via provider | User selects provider |
+
+**Supported OAuth providers:**
+- **Google** — built-in `GoogleProvider` (default)
+- **GitHub** — built-in `GitHubProvider`
+- **CyberArk Identity** — generic `OAuthProvider` with CyberArk OIDC endpoints
+- **Any OAuth 2.0** — generic `OAuthProvider`, user supplies authorization + token endpoint URLs
+
+**Rejected:** Microsoft/Azure AD. ENV-var-only credential passing (insecure for a finance tool).
+
+## 17. Credential Storage: OS Keychain + Encrypted Disk Store
+
+**Decision:** Two-tier credential architecture.
+
+**Tier 1 — OS Keychain (long-lived secrets):**
+- Lunch Money API token, OAuth client ID/secret
+- Stored via OS-native keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager)
+- Never written to disk in plain text
+- Service namespace: `lunchmoney-mcp`
+
+**Tier 2 — Encrypted DiskStore (OAuth session tokens):**
+- Access tokens, refresh tokens, authorization codes, client registrations
+- Stored on filesystem encrypted with AES-256-GCM
+- Encryption key stored in OS keychain (Tier 1) — disk store is useless without it
+- TTL-managed with automatic expiration and cleanup
+- Location: platform-native data directory via `env-paths` package
+  - macOS: `~/Library/Application Support/lunchmoney-mcp/`
+  - Linux: `~/.local/share/lunchmoney-mcp/`
+  - Windows: `%APPDATA%/lunchmoney-mcp/`
+
+**Rationale:** The keychain is a vault (few entries, long-lived, OS-encrypted). The disk store is a cache (many entries, TTL-managed, high-frequency access). Neither layer is useful without the other. ENV vars remain as fallback for headless/Docker/systemd environments where no keychain is available.
+
+**Documentation:** Architecture documented in both README and SECURITY.md.
+
+## 18. Credential Setup: Dual Path
+
+**Decision:** Two setup methods — in-chat MCP tool and CLI command.
+
+**Path 1 — In-chat (simplest):**
+- Server exposes a `configureLunchMoneyToken` MCP tool
+- User pastes their API token into the conversation
+- Claude calls the tool, which stores it in the OS keychain
+- Zero context switching — never leave the chat
+
+**Path 2 — CLI (most secure):**
+- `npx lunchmoney-mcp setup` — interactive prompt
+- Opens Lunch Money developer settings page in browser
+- User pastes token at the prompt
+- Stored in OS keychain
+- Token never appears in chat history
+
+**First-run behavior:** If no API token is found (no keychain entry, no ENV var), all tools return a helpful error message directing the user to either paste their token in chat or run the setup command.
+
+**Rationale:** Users who want simplicity paste into chat. Users who don't want tokens in conversation history use the CLI. Both paths store credentials in the keychain. ENV vars remain as fallback for server deployments.
+
+## 19. Deployment Targets
+
+**Decision:** Node.js runtime only. Provide configs for 5 deployment patterns.
+
+| Target | Artifact | Audience |
+|--------|----------|----------|
+| Local (npx) | Zero config | Claude Desktop / Claude Code users |
+| Docker | `Dockerfile` + `docker-compose.yml` | Self-hosters, NAS, homelab |
+| systemd | Unit file | VPS / bare metal |
+| Railway / Render | Deploy button + config | Managed hosting without VPS |
+| Fly.io | `fly.toml` | Edge-deployed managed hosting |
+
+**Rejected:** Cloudflare Workers (incompatible runtime — no Node.js APIs, no keychain, no filesystem). Kubernetes (overkill for single-process personal tool).
+
+## 20. API Version: v1
+
+**Decision:** Target Lunch Money API v1 (`https://dev.lunchmoney.app/v1`). Plan for v2 migration later.
+
+**Rationale:** v2 is still in preview/alpha with changing endpoint behaviors. All community tools target v1. The API client is isolated in `src/api/client.ts` with a single `baseUrl` — switching to v2 is a one-line change plus endpoint path updates. Will migrate when v2 reaches GA.
